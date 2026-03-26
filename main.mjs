@@ -596,3 +596,4 @@ function sqliteQuery(dbPath, query) {
 }
 
 await main();
+if (noDev) process.exit(0);
