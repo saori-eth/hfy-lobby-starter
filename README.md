@@ -4,7 +4,7 @@ Sets up local Hyperfy SDK projects from exported V2 world data.
 
 ## Prerequisites
 
-- Node.js
+- Node.js 22+ (`nvm install 22` or `nvm use 22`)
 - `sqlite3` CLI
 - `unzip` CLI
 
