@@ -21,9 +21,16 @@ const EXPORT_BASE_URL =
 
 const args = process.argv.slice(2);
 const importOnly = args.includes("--import-only");
+const noDev = args.includes("--no-dev");
 let input = args.find((a) => !a.startsWith("--"));
 
 async function main() {
+  const [major, minor] = process.versions.node.split(".").map(Number);
+  if (major < 22 || (major === 22 && minor < 11)) {
+    console.error(`[setup] requires Node >=22.11.0 (current: ${process.versions.node})`);
+    process.exit(1);
+  }
+
   let zipPath;
 
   if (importOnly) {
@@ -61,6 +68,8 @@ async function main() {
 
     const { extractDir, worlds } = await readManifest(tmpDir);
 
+    const created = [];
+
     for (const worldMeta of worlds) {
       const slug = worldMeta.slug || worldMeta.folder;
       const projectDir = path.resolve(slug);
@@ -97,7 +106,34 @@ async function main() {
       await initialSync(projectDir);
 
       console.log(`\n[setup] ./${slug}/ is ready!`);
-      console.log(`  cd ${slug} && npm run dev`);
+      created.push({ slug, projectDir });
+    }
+
+    // Launch dev server
+    if (!noDev && created.length === 1) {
+      console.log(`\n[setup] starting dev server...\n`);
+      execSync("npm run dev", { cwd: created[0].projectDir, stdio: "inherit" });
+    } else if (!noDev && created.length > 1) {
+      console.log(`\n[setup] ${created.length} worlds created:`);
+      created.forEach((w, i) => console.log(`  ${i + 1}) ${w.slug}`));
+      const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+      });
+      try {
+        const answer = await rl.question("\nWhich world to start? [number or q to quit]: ");
+        const choice = parseInt(answer.trim(), 10);
+        if (choice >= 1 && choice <= created.length) {
+          console.log(`\n[setup] starting ${created[choice - 1].slug}...\n`);
+          execSync("npm run dev", { cwd: created[choice - 1].projectDir, stdio: "inherit" });
+        }
+      } finally {
+        rl.close();
+      }
+    } else if (noDev && created.length > 0) {
+      for (const w of created) {
+        console.log(`  cd ${w.slug} && npm run dev`);
+      }
     }
   } finally {
     await fs.rm(tmpDir, { recursive: true, force: true });
