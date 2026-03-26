@@ -4,7 +4,7 @@ You are helping a user set up a local Hyperfy world from their V2 export.
 
 ## Prerequisites
 
-Node.js v22+ must be installed. Also need `sqlite3` and `unzip` CLI tools.
+Node.js v22.11.0 must be installed. Also need `sqlite3` and `unzip` CLI tools.
 
 ## Steps
 
