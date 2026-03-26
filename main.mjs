@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { execSync } from "node:child_process";
+import { execSync, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import fs from "node:fs/promises";
 import { existsSync, createWriteStream } from "node:fs";
@@ -94,6 +94,7 @@ async function main() {
 
       // Post-setup
       await addNpmScript(projectDir);
+      await initialSync(projectDir);
 
       console.log(`\n[setup] ./${slug}/ is ready!`);
       console.log(`  cd ${slug} && npm run dev`);
@@ -461,6 +462,48 @@ async function resetSyncState(projectDir) {
       }
     }
   }
+}
+
+async function initialSync(projectDir) {
+  console.log("[setup] syncing project to world...");
+  return new Promise((resolve) => {
+    let done = false;
+    const finish = () => {
+      if (done) return;
+      done = true;
+      resolve();
+    };
+
+    const child = spawn("npx", ["gamedev", "dev"], {
+      cwd: projectDir,
+      stdio: ["pipe", "pipe", "pipe"],
+      env: { ...process.env, BIDIRECTIONAL_SYNC: "false" },
+      detached: true,
+    });
+
+    let output = "";
+    const onData = (data) => {
+      const text = data.toString();
+      process.stderr.write(`  [sync] ${text}`);
+      output += text;
+      if (output.includes("Connected to")) {
+        setTimeout(() => {
+          try { process.kill(-child.pid, "SIGTERM"); } catch {}
+          finish();
+        }, 2000);
+      }
+    };
+
+    child.stdout.on("data", onData);
+    child.stderr.on("data", onData);
+    child.on("exit", finish);
+    child.on("error", finish);
+
+    setTimeout(() => {
+      try { process.kill(-child.pid, "SIGTERM"); } catch {}
+      finish();
+    }, 120000);
+  });
 }
 
 async function addNpmScript(projectDir) {
