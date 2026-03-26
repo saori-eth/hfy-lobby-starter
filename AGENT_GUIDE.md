@@ -25,7 +25,7 @@ curl -O https://raw.githubusercontent.com/saori-eth/hfy-lobby-starter/refs/heads
 4. Run the script with their address:
 
 ```bash
-node main.mjs 0x<THEIR_ADDRESS>
+node main.mjs --no-dev 0x<THEIR_ADDRESS>
 ```
 
-The script will download their world export, scaffold the project, install dependencies, and start the dev server automatically. The world will be accessible at http://localhost:3000.
+The script will download their world export, scaffold the project, and install dependencies. Once complete, `cd` into the created world directory and run `npm run dev` to start the dev server at http://localhost:3000.

@@ -504,11 +504,6 @@ async function initialSync(projectDir) {
   console.log("[setup] syncing project to world...");
   return new Promise((resolve) => {
     let done = false;
-    const finish = () => {
-      if (done) return;
-      done = true;
-      resolve();
-    };
 
     const child = spawn("npx", ["gamedev", "dev"], {
       cwd: projectDir,
@@ -517,28 +512,34 @@ async function initialSync(projectDir) {
       detached: true,
     });
 
+    const cleanup = () => {
+      if (done) return;
+      done = true;
+      child.stdout.removeAllListeners();
+      child.stderr.removeAllListeners();
+      child.stdout.destroy();
+      child.stderr.destroy();
+      child.stdin.destroy();
+      try { process.kill(-child.pid, "SIGTERM"); } catch {}
+      try { process.kill(-child.pid, "SIGKILL"); } catch {}
+      child.unref();
+      resolve();
+    };
+
     let output = "";
     const onData = (data) => {
-      const text = data.toString();
-      process.stderr.write(`  [sync] ${text}`);
-      output += text;
+      output += data.toString();
       if (output.includes("Connected to")) {
-        setTimeout(() => {
-          try { process.kill(-child.pid, "SIGTERM"); } catch {}
-          finish();
-        }, 2000);
+        setTimeout(cleanup, 2000);
       }
     };
 
     child.stdout.on("data", onData);
     child.stderr.on("data", onData);
-    child.on("exit", finish);
-    child.on("error", finish);
+    child.on("exit", cleanup);
+    child.on("error", cleanup);
 
-    setTimeout(() => {
-      try { process.kill(-child.pid, "SIGTERM"); } catch {}
-      finish();
-    }, 120000);
+    setTimeout(cleanup, 60000);
   });
 }
 
